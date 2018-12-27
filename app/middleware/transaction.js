@@ -1,17 +1,14 @@
 module.exports = (options, app) => async (ctx, next) => {
-
-  console.log('my plugin', options)
-  console.log('app.config', app.config)
-  
-  const { namespace } = app.config.sequelizeAutotrx
   const sequelizeConfig = app.config.sequelize
 
   if (sequelizeConfig.datasources) { // multiple datasources
+    app.loggers.coreLogger.info(`[egg-sequelize-autotrx] multiple database case`)
     sequelizeConfig.datasources.forEach(datasource => {
-      inject(ctx, getDelegate(datasource), namespace)  
+      inject(ctx, getDelegate(datasource))  
     })
   } else { // single datasource
-    inject(ctx, getDelegate(sequelizeConfig), namespace)
+    app.loggers.coreLogger.info(`[egg-sequelize-autotrx] single database case`)
+    inject(ctx, getDelegate(sequelizeConfig))
   }
 
   await next()
@@ -20,14 +17,18 @@ module.exports = (options, app) => async (ctx, next) => {
 // refer: https://github.com/eggjs/egg-sequelize#multiple-datasources
 const getDelegate = datasource => datasource.delegate || 'model'
 
-const inject = (ctx, delegate, namespace) => {
-  const model = ctx[delegate]
+const inject = (ctx, delegate) => {
   const { app } = ctx
+  const model = ctx[delegate]
 
+  // https://github.com/sequelize/sequelize/blob/master/lib/sequelize.js#L1044
+  // namespace has to get from _cls, otherwise it will have issue for multiple datasources case
+  const namespace = model.constructor._cls
+  
   if (!model.transaction.__injected) {
     const oldTrx = model.transaction
     model.transaction = async task => {
-      let transaction = namespace.get('transaction')
+      const transaction = namespace.get('transaction')
       if (transaction) {
         app.loggers.coreLogger.info(`[egg-sequelize-autotrx] ctx.[${delegate}].transaction call injected transaction method`)
         return oldTrx.call(model, { transaction }, task)
