@@ -24,6 +24,10 @@ const inject = (ctx, delegate) => {
   // https://github.com/sequelize/sequelize/blob/master/lib/sequelize.js#L1044
   // namespace has to get from _cls, otherwise it will have issue for multiple datasources case
   const namespace = model.constructor._cls
+
+  if (!namespace) {
+    throw new Error(`[egg-sequelize-autotrx] needs CLS enabled in sequelize, but CLS namespace is not found under ctx.${delegate} datasource`)
+  }
   
   if (!model.transaction.__injected) {
     const oldTrx = model.transaction

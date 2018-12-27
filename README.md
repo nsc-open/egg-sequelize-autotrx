@@ -20,9 +20,11 @@
 [download-image]: https://img.shields.io/npm/dm/egg-sequelize-autotrx.svg?style=flat-square
 [download-url]: https://npmjs.org/package/egg-sequelize-autotrx
 
-<!--
-Description here.
--->
+This plugin helps to do transaction auto pass down and solve the nested transaction issue.
+
+## Problems
+
+TODO desc the case with code ...
 
 ## Install
 
@@ -32,27 +34,85 @@ $ npm i egg-sequelize-autotrx --save
 
 ## Usage
 
+enable CLS of sequelize:
+
+```js
+// config.xx.js
+const mySequelize = require('sequelize')
+const clsNamespace = require('cls-hooked').createNamespace('your-namespace')
+mySequelize.useCLS(clsNamespace)
+
+module.exports = appInfo => {
+  const config = exports = {}
+
+  // single datasource case
+  config.sequelize = {
+    Sequelize: mySequelize, // use customized sequelize. https://github.com/eggjs/egg-sequelize#customize-sequelize
+    dialect: '',
+    // ...
+  }
+
+  // for multiple datasource, you need setup CLS of each your specific sequelize with different namespaces. https://github.com/eggjs/egg-sequelize#multiple-datasources
+}
+```
+
+enable sequelize-autotrx plugin:
+
 ```js
 // {app_root}/config/plugin.js
 exports.sequelizeAutotrx = {
   enable: true,
   package: 'egg-sequelize-autotrx',
-};
+}
 ```
 
 ## Configuration
 
+No configuration required:
+
 ```js
 // {app_root}/config/config.default.js
 exports.sequelizeAutotrx = {
-};
+}
 ```
 
 see [config/config.default.js](config/config.default.js) for more detail.
 
 ## Example
 
-<!-- example here -->
+### single datasource
+
+```js
+// controller.js
+async nestedTransactionTest () {
+  await this.ctx.model.transaction(async () => {
+    // if any of below operations failed, will rollback all
+    await this.createProject()
+    await this.nestedTrx()
+    await this.createUser()
+  })
+}
+
+async nestedTrxCanBeExecAlone () {
+  await this.nestedTrx()
+}
+
+async createProject () {
+  await this.ctx.model.Project.create()
+}
+
+async createUser () {
+  await this.ctx.model.User.create()
+}
+
+async nestedTrx () {
+  await this.ctx.model.transaction(async () => {
+    // other model operations
+  })
+}
+```
+
+### multiple datasource
 
 ## Questions & Suggestions
 

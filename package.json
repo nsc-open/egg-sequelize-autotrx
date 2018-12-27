@@ -1,6 +1,6 @@
 {
   "name": "egg-sequelize-autotrx",
-  "version": "0.0.17",
+  "version": "0.0.20",
   "description": "Auto transaction based on cls-hooked for egg-sequelize plugin",
   "eggPlugin": {
     "name": "sequelizeAutotrx",
