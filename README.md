@@ -165,6 +165,16 @@ async innerTrx () {
 }
 ```
 
+If you need your nested transaction commit by itself, you can do:
+
+```js
+async innerTrx () {
+  await this.ctx.model.transaction({ transaction: null }, async () => {
+    // specify the transaction as null, so it will not populated from parent transaction from cls
+  })
+}
+```
+
 ## Questions & Suggestions
 
 Please open an issue [here](https://github.com/eggjs/egg/issues).

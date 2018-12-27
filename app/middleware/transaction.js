@@ -31,17 +31,25 @@ const inject = (ctx, delegate) => {
   
   if (!model.transaction.__injected) {
     const oldTrx = model.transaction
-    model.transaction = async task => {
-      const transaction = namespace.get('transaction')
-      if (transaction) {
-        app.loggers.coreLogger.info(`[egg-sequelize-autotrx] ctx.[${delegate}].transaction call injected transaction method`)
-        return oldTrx.call(model, { transaction }, task)
+    model.transaction = async (...args) => {
+      if (args.length === 1) { // transaction(asyncTask)
+        const task = args[0]
+        const transaction = namespace.get('transaction')
+        if (transaction) {
+          app.loggers.coreLogger.info(`[egg-sequelize-autotrx] ctx.${delegate}.transaction specified transaction`)
+          return oldTrx.call(model, { transaction }, task)
+        } else {
+          app.loggers.coreLogger.info(`[egg-sequelize-autotrx] ctx.${delegate}.transaction no specified transaction`)
+          return oldTrx.call(model, task)
+        }
       } else {
-        app.loggers.coreLogger.info(`[egg-sequelize-autotrx] ctx.[${delegate}].transaction call original transaction method`)
-        return oldTrx.call(model, task)
+        // for example: transaction({ transaction }, asyncTask)
+        // will call original transaction function directly, without inject transaction in cls
+        app.loggers.coreLogger.info(`[egg-sequelize-autotrx] ctx.${delegate}.transaction call original method`)
+        return oldTrx.call(model, ...args)
       }
     }
     model.transaction.__injected = true
-    app.loggers.coreLogger.info(`[egg-sequelize-autotrx] ctx.[${delegate}].transaction is injected`)
+    app.loggers.coreLogger.info(`[egg-sequelize-autotrx] ctx.${delegate}.transaction is injected`)
   }
 }
