@@ -3,7 +3,7 @@ module.exports = (options, app) => async (ctx, next) => {
   console.log('my plugin', options)
   console.log('app.config', app.config)
   
-  const { namespace } = app.config.sequelizeAutoTrx
+  const { namespace } = app.config.sequelizeAutotrx
   const sequelizeConfig = app.config.sequelize
 
   if (sequelizeConfig.datasources) { // multiple datasources
@@ -22,6 +22,7 @@ const getDelegate = datasource => datasource.delegate || 'model'
 
 const inject = (ctx, delegate, namespace) => {
   const model = ctx[delegate]
+  const { app } = ctx
 
   if (!model.transaction.__injected) {
     const oldTrx = model.transaction
