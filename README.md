@@ -24,7 +24,37 @@ This plugin helps to do transaction auto pass down and solve the nested transact
 
 ## Problems
 
-TODO desc the case with code ...
+After CLS enabled, nested transaction will have unexpected result:
+
+```js
+async nestedTrx () {
+  await this.ctx.model.transaction(async () => {
+    await this.ctx.model.M1.create()
+    await this.ctx.model.transaction(async () => {
+      await this.ctx.model.M2.create()
+      await this.ctx.model.M3.create()
+    })
+    await this.ctx.model.M4.create()
+  })
+}
+```
+
+If error throw out from M4 creation, transaction will rollback creation for M1 and M4. M2 and M3 will be committed. To make all the operations commit and rollback together through out all the transactions, you need help from this plugin.
+
+Internally, this plugin solves the problem by passing parent transaction down to the child transaction:
+
+```js
+async nestedTrx () {
+  await this.ctx.model.transaction(async parentTrx => {
+    await this.ctx.model.M1.create()
+    await this.ctx.model.transaction({ transaction: parentTrx }, async () => {
+      await this.ctx.model.M2.create()
+      await this.ctx.model.M3.create()
+    })
+    await this.ctx.model.M4.create()
+  })
+}
+```
 
 ## Install
 
@@ -34,7 +64,9 @@ $ npm i egg-sequelize-autotrx --save
 
 ## Usage
 
-enable CLS of sequelize:
+You need to use egg-sequelize plugin first, and have it CLS enabled with cls-hooked:
+
+### single datasource
 
 ```js
 // config.xx.js
@@ -45,15 +77,45 @@ mySequelize.useCLS(clsNamespace)
 module.exports = appInfo => {
   const config = exports = {}
 
-  // single datasource case
+  // use customized sequelize. https://github.com/eggjs/egg-sequelize#customize-sequelize
   config.sequelize = {
-    Sequelize: mySequelize, // use customized sequelize. https://github.com/eggjs/egg-sequelize#customize-sequelize
-    dialect: '',
+    Sequelize: mySequelize, 
+    dialect: 'mysql',
     // ...
   }
+}
+```
+
+### multiple datasource
+
+```js
+// config.xx.js
+const mySequelize1 = require('sequelize')
+const mySequelize2 = require('sequelize')
+const clsNamespace1 = require('cls-hooked').createNamespace('your-namespace1')
+const clsNamespace2 = require('cls-hooked').createNamespace('your-namespace2')
+
+// create multiple namespaces for multiple customized sequelize
+mySequelize1.useCLS(clsNamespace1)
+mySequelize2.useCLS(clsNamespace2)
+
+module.exports = appInfo => {
+  const config = exports = {}
 
   // for multiple datasource, you need setup CLS of each your specific sequelize with different namespaces. https://github.com/eggjs/egg-sequelize#multiple-datasources
-}
+  config.sequelize = {
+    datasources: [{
+      Sequelize: mySequelize1,
+      delegate: 'model1',
+      dialect: 'mysql'
+      // ...
+    }, {
+      Sequelize: mySequelize2,
+      delegate: 'model2',
+      dialect: 'mysql'
+      // ...
+    }]
+  }
 ```
 
 enable sequelize-autotrx plugin:
@@ -68,11 +130,10 @@ exports.sequelizeAutotrx = {
 
 ## Configuration
 
-No configuration required:
-
 ```js
 // {app_root}/config/config.default.js
 exports.sequelizeAutotrx = {
+  // no config required here
 }
 ```
 
@@ -80,39 +141,29 @@ see [config/config.default.js](config/config.default.js) for more detail.
 
 ## Example
 
-### single datasource
+Let's see a real case:
 
 ```js
 // controller.js
 async nestedTransactionTest () {
   await this.ctx.model.transaction(async () => {
-    // if any of below operations failed, will rollback all
-    await this.createProject()
-    await this.nestedTrx()
-    await this.createUser()
+    await this.ctx.model.Project.create()
+    await this.innerTrx()
+    await this.ctx.model.User.create()
   })
 }
 
-async nestedTrxCanBeExecAlone () {
+async innerTrxCanBeExecAlone () {
   await this.nestedTrx()
 }
 
-async createProject () {
-  await this.ctx.model.Project.create()
-}
-
-async createUser () {
-  await this.ctx.model.User.create()
-}
-
-async nestedTrx () {
+// this transaction can be execute alone, and also can be nested into another transaction
+async innerTrx () {
   await this.ctx.model.transaction(async () => {
     // other model operations
   })
 }
 ```
-
-### multiple datasource
 
 ## Questions & Suggestions
 
