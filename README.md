@@ -90,27 +90,23 @@ module.exports = appInfo => {
 
 ```js
 // config.xx.js
-const mySequelize1 = require('sequelize')
-const mySequelize2 = require('sequelize')
-const clsNamespace1 = require('cls-hooked').createNamespace('your-namespace1')
-const clsNamespace2 = require('cls-hooked').createNamespace('your-namespace2')
+const mySequelize = require('sequelize')
+const clsNamespace = require('cls-hooked').createNamespace('your-namespace')
 
 // create multiple namespaces for multiple customized sequelize
-mySequelize1.useCLS(clsNamespace1)
-mySequelize2.useCLS(clsNamespace2)
+mySequelize.useCLS(clsNamespace)
 
 module.exports = appInfo => {
   const config = exports = {}
 
   // for multiple datasource, you need setup CLS of each your specific sequelize with different namespaces. https://github.com/eggjs/egg-sequelize#multiple-datasources
   config.sequelize = {
+    Sequelize: mySequelize,
     datasources: [{
-      Sequelize: mySequelize1,
       delegate: 'model1',
       dialect: 'mysql'
       // ...
     }, {
-      Sequelize: mySequelize2,
       delegate: 'model2',
       dialect: 'mysql'
       // ...
